@@ -20,7 +20,7 @@ FROM osrm/osrm-backend:latest
 RUN sed -i 's|deb.debian.org/debian|archive.debian.org/debian|g; s|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list \
     && sed -i '/stretch-updates/d' /etc/apt/sources.list \
     && apt-get update \
-    && apt-get install -y wget --no-install-recommends \
+    && apt-get install -y wget ca-certificates --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and set up entrypoint script
