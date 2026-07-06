@@ -11,18 +11,27 @@
 # OUTPUT FILES (stored in /data volume):
 # - england.osrm: Processed routing data for car profile
 
-set -e
+set -euo pipefail
 
 DATA="/data"
 PBF="$DATA/england.osm.pbf"
 OSRM="$DATA/england.osrm"
 
-if [ ! -f "$OSRM" ]; then
-  echo "[osrm] First start — downloading England extract (~700 MB)..."
-  wget -q -O "$PBF" \
-    https://download.geofabrik.de/europe/great-britain/england-latest.osm.pbf
+mkdir -p "$DATA"
 
-  echo "[osrm] Extracting (using car profile)..."
+if [ ! -f "$OSRM" ]; then
+  # Clean up any partial download from a previous failed run
+  rm -f "$PBF"
+
+  echo "[osrm] First start — downloading England extract (~700 MB)..."
+  if ! wget --progress=dot:giga -O "$PBF" \
+    https://download.geofabrik.de/europe/great-britain/england-latest.osm.pbf; then
+    echo "[osrm] ERROR: download failed. Check network access to download.geofabrik.de"
+    rm -f "$PBF"
+    exit 1
+  fi
+
+  echo "[osrm] Extracting (car profile)..."
   osrm-extract -p /opt/car.lua "$PBF"
 
   echo "[osrm] Partitioning..."
@@ -31,14 +40,14 @@ if [ ! -f "$OSRM" ]; then
   echo "[osrm] Customising..."
   osrm-customize "$OSRM"
 
-  # Clean up PBF file after successful processing
   rm -f "$PBF"
-  echo "[osrm] Done. Processed data stored in volume."
+  echo "[osrm] Processing complete. Data stored in volume."
 fi
 
-echo "[osrm] Starting server..."
+echo "[osrm] Starting server on :5000..."
 exec osrm-routed \
   --algorithm=MLD \
   --max-table-size=1000 \
   --max-trip-size=1000 \
+  --port 5000 \
   "$OSRM"
